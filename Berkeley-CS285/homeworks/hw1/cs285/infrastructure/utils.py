@@ -17,7 +17,7 @@ def sample_trajectory(env, policy, max_path_length, render=False):
     """Sample a rollout in the environment from a policy."""
     
     # initialize env for the beginning of a new rollout
-    ob =  env.reset() # TODO: initial observation after resetting the env
+    ob = env.reset() # TODO: initial observation after resetting the env
 
     # init vars
     obs, acs, rewards, next_obs, terminals, image_obs = [], [], [], [], [], []
@@ -29,19 +29,30 @@ def sample_trajectory(env, policy, max_path_length, render=False):
             if hasattr(env, 'sim'):
                 img = env.sim.render(camera_name='track', height=500, width=500)[::-1]
             else:
-                img = env.render(mode='single_rgb_array')
-            image_obs.append(cv2.resize(img, dsize=(250, 250), interpolation=cv2.INTER_CUBIC))
+                img = env.render()
+            if img is not None:
+                if not isinstance(img, np.ndarray):
+                    # Try to convert to numpy array if it's not
+                    img = np.array(img)
+                # Check if it's still not valid or empty
+                if len(img.shape) == 0:
+                     print("Warning: Rendered image is empty or scalar.")
+                     continue
+                if len(img.shape) == 4 and img.shape[0] == 1:
+                     # Handle case where it might be (1, H, W, C)
+                     img = img[0]
+                image_obs.append(cv2.resize(img, dsize=(250, 250), interpolation=cv2.INTER_CUBIC))
     
         # TODO use the most recent ob to decide what to do
-        ac = TODO # HINT: this is a numpy array
+        ac = policy.get_action(ob) # HINT: this is a numpy array
         ac = ac[0]
 
         # TODO: take that action and get reward and next ob
-        next_ob, rew, done, _ = TODO
+        next_ob, rew, done, _ = env.step(ac)
         
         # TODO rollout can end due to done, or due to max_path_length
         steps += 1
-        rollout_done = TODO # HINT: this is either 0 or 1
+        rollout_done = done or steps >= max_path_length # HINT: this is either 0 or 1
         
         # record result of taking that action
         obs.append(ob)
